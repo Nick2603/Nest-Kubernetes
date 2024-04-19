@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nest-kubernetes-app-config
+  namespace: nest-kubernetes-app
+data:
+  APP_PORT: "3000"
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  POSTGRES_DB: "my_db"
+  POSTGRES_USER: "my_user"
+  PGADMIN_DEFAULT_EMAIL: "my_pg_email@gmail.com"

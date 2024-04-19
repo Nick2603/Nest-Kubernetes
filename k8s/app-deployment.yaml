@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nest-application
+  namespace: nest-kubernetes-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nest-application
+  template:
+    metadata:
+      labels:
+        app: nest-application
+    spec:
+      containers:
+      - name: nest-application
+        image: mykytavostrikov/nest-kubernetes:latest
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: nest-kubernetes-app-config
+        - secretRef:
+            name: nest-kubernetes-app-secret
