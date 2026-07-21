@@ -1,73 +1,129 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
-
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Installation
-
+# Nest-Kubernetes
+ 
+A NestJS + TypeORM + PostgreSQL API for managing users and tickets, built with a CQRS-flavored architecture and shipped with everything needed to run it on Kubernetes — Dockerfile, manifests, ConfigMap/Secret, and an Ingress.
+ 
+## Motivation
+ 
+Most NestJS starter repos stop at "here's a controller and a service." I wanted something that went further: a small but realistic domain (users holding tickets), a clean read/write split at the repository layer, and — since so many backend tutorials hand-wave the "now put it in production" part — a full Kubernetes deployment for the app, its Postgres database, and pgAdmin. I built this as a hands-on way to work through NestJS's CQRS module and Kubernetes fundamentals (Deployments, Services, ConfigMaps, Secrets, Ingress) in one place, rather than learning them from two disconnected tutorials.
+ 
+## 🚀 Quick Start
+ 
+### Run locally
+ 
 ```bash
-$ npm install
+# Install dependencies
+npm install
+ 
+# Configure environment (see Usage below for required variables)
+cp .env.example .env
+ 
+# Start Postgres however you prefer, then run the app in watch mode
+npm run start:dev
 ```
-
-## Running the app
-
+ 
+The API listens on `APP_PORT` (default `3000`), with a health check at `GET /`.
+ 
+### Run on Kubernetes
+ 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Apply the manifests in order
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secret.yaml
+kubectl apply -f k8s/postgres-deployment.yaml -f k8s/postgres-service.yaml
+kubectl apply -f k8s/pgadmin-deployment.yaml -f k8s/pgadmin-service.yaml
+kubectl apply -f k8s/app-deployment.yaml -f k8s/app-service.yaml
+kubectl apply -f k8s/ingress.yaml
 ```
-
-## Test
-
+ 
+## 📖 Usage
+ 
+### Environment variables
+ 
+| Variable | Description |
+| --- | --- |
+| `APP_PORT` | Port the Nest app listens on |
+| `DB_HOST` | Postgres host |
+| `DB_PORT` | Postgres port |
+| `POSTGRES_DB` | Database name |
+| `POSTGRES_USER` | Database user |
+| `POSTGRES_PASSWORD` | Database password |
+| `PGADMIN_DEFAULT_EMAIL` | pgAdmin login email |
+| `PGADMIN_DEFAULT_PASSWORD` | pgAdmin login password |
+ 
+All variables are validated on startup with Joi — the app will fail fast with a clear error if one is missing or malformed.
+ 
+### API endpoints
+ 
+**Users**
+ 
+- `GET /users?firstName=&lastName=&isActive=` — list users, with optional filters
+- `GET /users/:id` — get a single user (with their tickets)
+- `POST /users` — create a user (`firstName`, `lastName`, optional `isActive`)
+- `PUT /users/:id` — update a user
+- `DELETE /users/:id` — delete a user
+**Tickets**
+ 
+- `GET /tickets` — list tickets, sorted by date
+- `GET /tickets/:id` — get a single ticket (with its holder, if any)
+- `POST /tickets` — create a ticket (`event`, `date`)
+- `DELETE /tickets/:id` — delete a ticket
+- `PUT /tickets/assign-ticket-to-user` — assign a ticket to a user (`userId`, `ticketId`)
+- `PUT /tickets/unassign-ticket-from-user` — remove a ticket's holder (`userId`, `ticketId`)
+### Examples
+ 
+Create a user:
+ 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+curl -X POST http://localhost:3000/users \
+  -H "Content-Type: application/json" \
+  -d '{"firstName": "Ada", "lastName": "Lovelace"}'
 ```
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
+ 
+Assign a ticket to that user:
+ 
+```bash
+curl -X PUT http://localhost:3000/tickets/assign-ticket-to-user \
+  -H "Content-Type: application/json" \
+  -d '{"userId": 1, "ticketId": 1}'
+```
+ 
+## 🤝 Contributing
+ 
+### Clone the repo
+ 
+```bash
+git clone https://github.com/Nick2603/Nest-Kubernetes.git
+cd Nest-Kubernetes
+```
+ 
+### Install dependencies
+ 
+```bash
+npm install
+```
+ 
+### Run in watch mode
+ 
+```bash
+npm run start:dev
+```
+ 
+### Lint and format
+ 
+```bash
+npm run lint
+npm run format
+```
+ 
+### Run the test suite
+ 
+```bash
+npm run test
+npm run test:e2e
+npm run test:cov
+```
+ 
+### Submit a pull request
+ 
+If you'd like to contribute, please fork the repository and open a pull request against `main` with a clear description of the change.
